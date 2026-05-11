@@ -1,0 +1,31 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String   // INCOME or EXPENSE
+  icon      String   @default("📦")
+  color     String   @default("#6B7280")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  records   Record[]
+}
+
+model Record {
+  id         Int      @id @default(autoincrement())
+  amount     Float
+  type       String   // INCOME or EXPENSE
+  date       DateTime
+  note       String?
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
