@@ -1,6 +1,21 @@
+import bcrypt from 'bcryptjs'
 import prisma from './lib/prisma'
 
 async function main() {
+  const existing = await prisma.user.findFirst()
+  if (existing) {
+    console.log('Seed already run, skipping.')
+    process.exit(0)
+  }
+
+  const password = process.env.SEED_PASSWORD || 'admin123'
+  const hash = await bcrypt.hash(password, 10)
+
+  const user = await prisma.user.create({
+    data: { username: 'default', password: hash },
+  })
+  console.log(`User created: ${user.username} / ${password}`)
+
   const categories = [
     { name: '餐饮', type: 'EXPENSE', icon: '🍽️', color: '#EF4444' },
     { name: '交通', type: 'EXPENSE', icon: '🚗', color: '#F97316' },
@@ -17,33 +32,11 @@ async function main() {
   ]
 
   for (const cat of categories) {
-    await prisma.category.upsert({
-      where: { id: 0 },
-      create: cat,
-      update: cat,
-    }).catch(() => prisma.category.create({ data: cat }))
+    await prisma.category.create({ data: { ...cat, userId: user.id } })
   }
 
-  const allCategories = await prisma.category.findMany()
-  const now = new Date()
-  const sampleRecords = [
-    { amount: 35, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 2), note: '午餐', categoryId: allCategories.find(c => c.name === '餐饮')!.id },
-    { amount: 5, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 2), note: '公交', categoryId: allCategories.find(c => c.name === '交通')!.id },
-    { amount: 15000, type: 'INCOME', date: new Date(now.getFullYear(), now.getMonth(), 1), note: '6月工资', categoryId: allCategories.find(c => c.name === '工资')!.id },
-    { amount: 200, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 3), note: '电费', categoryId: allCategories.find(c => c.name === '住房')!.id },
-    { amount: 89, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 4), note: '买书', categoryId: allCategories.find(c => c.name === '教育')!.id },
-    { amount: 45, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 5), note: '奶茶', categoryId: allCategories.find(c => c.name === '餐饮')!.id },
-    { amount: 299, type: 'EXPENSE', date: new Date(now.getFullYear(), now.getMonth(), 6), note: '话费', categoryId: allCategories.find(c => c.name === '通讯')!.id },
-    { amount: 500, type: 'INCOME', date: new Date(now.getFullYear(), now.getMonth(), 7), note: '红包', categoryId: allCategories.find(c => c.name === '红包')!.id },
-  ]
-
-  for (const record of sampleRecords) {
-    await prisma.record.create({ data: record })
-  }
-
-  console.log('Seed data created successfully!')
-  console.log(`  - ${allCategories.length} categories`)
-  console.log(`  - ${sampleRecords.length} sample records`)
+  console.log(`${categories.length} categories created`)
+  console.log('Seed completed!')
 }
 
 main()

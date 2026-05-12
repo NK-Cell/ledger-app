@@ -1,7 +1,5 @@
-import axios from 'axios'
+import { api } from '../context/AuthContext'
 import type { Category, Record, PaginatedResponse, SummaryStats, TrendData, RecordFormData, CategoryFormData, BatchCreateResult } from '../types'
-
-const api = axios.create({ baseURL: '/api' })
 
 export const categoryApi = {
   list: () => api.get<Category[]>('/categories').then(r => r.data),

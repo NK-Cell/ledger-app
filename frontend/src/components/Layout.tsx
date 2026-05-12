@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
 
 const navItems = [
   { path: '/', label: '仪表盘', icon: '📊' },
@@ -10,6 +11,13 @@ const navItems = [
 
 export default function Layout({ children }: { children: ReactNode }) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,6 +46,13 @@ export default function Layout({ children }: { children: ReactNode }) {
                 </Link>
               )
             })}
+            <button
+              onClick={handleLogout}
+              className="ml-2 px-3 py-2 rounded-lg text-sm font-medium text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+              title="退出登录"
+            >
+              退出
+            </button>
           </nav>
         </div>
       </header>

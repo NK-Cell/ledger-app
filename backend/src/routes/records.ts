@@ -1,14 +1,15 @@
-import { Router, Request, Response } from 'express'
+import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
+import { AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (req: AuthRequest, res: Response) => {
   const { page = '1', pageSize = '20', startDate, endDate, categoryId, type } = req.query
   const skip = (parseInt(page as string) - 1) * parseInt(pageSize as string)
   const take = parseInt(pageSize as string)
 
-  const where: any = {}
+  const where: any = { userId: req.userId }
   if (startDate) where.date = { ...(where.date || {}), gte: new Date(startDate as string) }
   if (endDate) where.date = { ...(where.date || {}), lte: new Date(endDate as string) }
   if (categoryId) where.categoryId = parseInt(categoryId as string)
@@ -34,7 +35,7 @@ router.get('/', async (req: Request, res: Response) => {
   })
 })
 
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: AuthRequest, res: Response) => {
   const { amount, type, date, note, categoryId } = req.body
   if (amount == null || !type || !date || !categoryId) {
     res.status(400).json({ error: 'amount, type, date, and categoryId are required' })
@@ -44,21 +45,28 @@ router.post('/', async (req: Request, res: Response) => {
     res.status(400).json({ error: 'type must be INCOME or EXPENSE' })
     return
   }
-  const category = await prisma.category.findUnique({ where: { id: categoryId } })
+  const category = await prisma.category.findFirst({ where: { id: categoryId, userId: req.userId } })
   if (!category) {
     res.status(400).json({ error: 'Category not found' })
     return
   }
   const record = await prisma.record.create({
-    data: { amount: parseFloat(amount), type, date: new Date(date), note, categoryId },
+    data: { amount: parseFloat(amount), type, date: new Date(date), note, categoryId, userId: req.userId! },
     include: { category: true },
   })
   res.status(201).json(record)
 })
 
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', async (req: AuthRequest, res: Response) => {
   const id = parseInt(req.params.id)
   const { amount, type, date, note, categoryId } = req.body
+
+  const existing = await prisma.record.findFirst({ where: { id, userId: req.userId } })
+  if (!existing) {
+    res.status(404).json({ error: 'Record not found' })
+    return
+  }
+
   const data: any = {}
   if (amount != null) data.amount = parseFloat(amount)
   if (type) {
@@ -71,36 +79,34 @@ router.put('/:id', async (req: Request, res: Response) => {
   if (date) data.date = new Date(date)
   if (note !== undefined) data.note = note
   if (categoryId) {
-    const category = await prisma.category.findUnique({ where: { id: categoryId } })
+    const category = await prisma.category.findFirst({ where: { id: categoryId, userId: req.userId } })
     if (!category) {
       res.status(400).json({ error: 'Category not found' })
       return
     }
     data.categoryId = categoryId
   }
-  try {
-    const record = await prisma.record.update({
-      where: { id },
-      data,
-      include: { category: true },
-    })
-    res.json(record)
-  } catch {
-    res.status(404).json({ error: 'Record not found' })
-  }
+
+  const record = await prisma.record.update({
+    where: { id },
+    data,
+    include: { category: true },
+  })
+  res.json(record)
 })
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', async (req: AuthRequest, res: Response) => {
   const id = parseInt(req.params.id)
-  try {
-    await prisma.record.delete({ where: { id } })
-    res.json({ success: true })
-  } catch {
+  const existing = await prisma.record.findFirst({ where: { id, userId: req.userId } })
+  if (!existing) {
     res.status(404).json({ error: 'Record not found' })
+    return
   }
+  await prisma.record.delete({ where: { id } })
+  res.json({ success: true })
 })
 
-router.post('/batch', async (req: Request, res: Response) => {
+router.post('/batch', async (req: AuthRequest, res: Response) => {
   const { records } = req.body
   if (!Array.isArray(records) || records.length === 0) {
     res.status(400).json({ error: 'records array is required' })
@@ -125,6 +131,7 @@ router.post('/batch', async (req: Request, res: Response) => {
           date: new Date(r.date),
           note: r.note || null,
           categoryId: r.categoryId,
+          userId: req.userId!,
         },
         include: { category: true },
       })

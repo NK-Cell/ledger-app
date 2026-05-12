@@ -4,20 +4,27 @@
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
+    "dev:prod": "DATABASE_URL=\"file:./prod.db\" JWT_SECRET=\"change-me\" tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx src/seed.ts"
+    "db:push:prod": "DATABASE_URL=\"file:./prod.db\" prisma db push",
+    "db:seed": "tsx src/seed.ts",
+    "db:seed:prod": "DATABASE_URL=\"file:./prod.db\" SEED_PASSWORD=\"your-password\" tsx src/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
-    "express": "^4.22.1"
+    "express": "^4.22.1",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.19.18",
     "prisma": "^6.19.3",
     "tsx": "^4.21.0",

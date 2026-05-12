@@ -25,6 +25,8 @@ jobs:
       - run: npm ci
 
       - run: npx prisma generate
+        env:
+          DATABASE_URL: "file:./dev.db"
 
       - run: npx tsc --noEmit
         name: TypeScript check

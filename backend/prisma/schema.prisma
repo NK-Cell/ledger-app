@@ -4,15 +4,26 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int        @id @default(autoincrement())
+  username   String     @unique
+  password   String
+  createdAt  DateTime   @default(now())
+  categories Category[]
+  records    Record[]
 }
 
 model Category {
   id        Int      @id @default(autoincrement())
   name      String
-  type      String   // INCOME or EXPENSE
+  type      String
   icon      String   @default("📦")
   color     String   @default("#6B7280")
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   records   Record[]
@@ -21,11 +32,13 @@ model Category {
 model Record {
   id         Int      @id @default(autoincrement())
   amount     Float
-  type       String   // INCOME or EXPENSE
+  type       String
   date       DateTime
   note       String?
   categoryId Int
+  userId     Int
   category   Category @relation(fields: [categoryId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }

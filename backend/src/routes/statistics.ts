@@ -1,9 +1,10 @@
-import { Router, Request, Response } from 'express'
+import { Router, Response } from 'express'
 import prisma from '../lib/prisma'
+import { AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
-router.get('/summary', async (req: Request, res: Response) => {
+router.get('/summary', async (req: AuthRequest, res: Response) => {
   const year = parseInt(req.query.year as string) || new Date().getFullYear()
   const month = req.query.month ? parseInt(req.query.month as string) : undefined
 
@@ -17,7 +18,7 @@ router.get('/summary', async (req: Request, res: Response) => {
   }
 
   const records = await prisma.record.findMany({
-    where: { date: dateFilter },
+    where: { userId: req.userId, date: dateFilter },
     include: { category: true },
   })
 
@@ -25,9 +26,9 @@ router.get('/summary', async (req: Request, res: Response) => {
   const totalExpense = records.filter(r => r.type === 'EXPENSE').reduce((s, r) => s + r.amount, 0)
   const balance = totalIncome - totalExpense
 
-  const byCategory: { [key: string]: { category: { id: number; name: string; icon: string; color: string }; total: number; count: number } } = {}
+  const byCategory: Record<string, { category: { id: number; name: string; icon: string; color: string }; total: number; count: number }> = {}
   for (const r of records) {
-    const key = `expense-${r.categoryId}`
+    const key = `${r.type}-${r.categoryId}`
     if (!byCategory[key]) {
       byCategory[key] = {
         category: { id: r.category.id, name: r.category.name, icon: r.category.icon, color: r.category.color },
@@ -50,11 +51,12 @@ router.get('/summary', async (req: Request, res: Response) => {
   })
 })
 
-router.get('/trends', async (req: Request, res: Response) => {
+router.get('/trends', async (req: AuthRequest, res: Response) => {
   const year = parseInt(req.query.year as string) || new Date().getFullYear()
 
   const records = await prisma.record.findMany({
     where: {
+      userId: req.userId,
       date: {
         gte: new Date(year, 0, 1),
         lt: new Date(year + 1, 0, 1),

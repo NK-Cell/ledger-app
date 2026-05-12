@@ -3,6 +3,10 @@ backend/node_modules/
 frontend/node_modules/
 backend/prisma/dev.db
 backend/prisma/dev.db-journal
+backend/prisma/prod.db
+backend/prisma/prod.db-journal
+backend/.env
+backend/.env.prod
 *.log
 dist/
 .DS_Store
